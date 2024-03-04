@@ -1,8 +1,7 @@
-package internal
+package shm
 
 import (
 	"bytes"
-	"io"
 	"syscall"
 	"unsafe"
 )
@@ -12,35 +11,39 @@ var (
 	procOpenFileMapping = kernel32.NewProc("OpenFileMappingW")
 )
 
-const MmfSize uintptr = 32 * 1024
+const (
+	FileSize        uintptr = 32 * 1024
+	DefaultFileName         = "Local\\SCSTelemetry"
+)
 
-type Shm interface {
-	Reader() io.Reader
+type SharedMemory interface {
+	Reader() *bytes.Reader
+	Read(values *Values) error
 	Close() error
 }
 
-type shm struct {
+type sharedMemory struct {
 	handle syscall.Handle
 	addr   uintptr
 	data   []byte
 }
 
-func OpenShm(mmfName string) (Shm, error) {
+func Open(mmfName string) (SharedMemory, error) {
 	handle, err := openFileMappingW(syscall.FILE_MAP_READ, false, mmfName)
 	if err != nil {
 		return nil, err
 	}
 
-	addr, err := syscall.MapViewOfFile(handle, syscall.FILE_MAP_READ, 0, 0, MmfSize)
+	addr, err := syscall.MapViewOfFile(handle, syscall.FILE_MAP_READ, 0, 0, FileSize)
 	if err != nil {
 		_ = syscall.CloseHandle(handle)
 		return nil, err
 	}
 
 	//goland:noinspection ALL
-	data := unsafe.Slice((*byte)(unsafe.Pointer(addr)), MmfSize)
+	data := unsafe.Slice((*byte)(unsafe.Pointer(addr)), FileSize)
 
-	return &shm{
+	return &sharedMemory{
 		handle: handle,
 		addr:   addr,
 		data:   data,
@@ -68,24 +71,29 @@ func openFileMappingW(access int32, inheritHandle bool, name string) (handle sys
 	return
 }
 
-func (s *shm) Reader() io.Reader {
-	return bytes.NewReader(s.data)
+func (mem *sharedMemory) Reader() *bytes.Reader {
+	return bytes.NewReader(mem.data)
 }
 
-func (s *shm) Close() error {
-	if s.addr != 0 {
-		err := syscall.UnmapViewOfFile(s.addr)
+func (mem *sharedMemory) Read(values *Values) error {
+	reader := bytes.NewReader(mem.data)
+	return values.Read(reader)
+}
+
+func (mem *sharedMemory) Close() error {
+	if mem.addr != 0 {
+		err := syscall.UnmapViewOfFile(mem.addr)
 		if err != nil {
 			return err
 		}
-		s.addr = 0
+		mem.addr = 0
 	}
-	if s.handle != syscall.InvalidHandle {
-		err := syscall.CloseHandle(s.handle)
+	if mem.handle != syscall.InvalidHandle {
+		err := syscall.CloseHandle(mem.handle)
 		if err != nil {
 			return err
 		}
-		s.handle = syscall.InvalidHandle
+		mem.handle = syscall.InvalidHandle
 	}
 	return nil
 }

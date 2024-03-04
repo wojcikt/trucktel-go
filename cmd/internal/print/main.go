@@ -3,24 +3,24 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	trucktel "github.com/wojcikt/trucktel-go"
+	"github.com/wojcikt/trucktel-go/internal/shm"
 	"log"
 )
 
 func main() {
-	tel, err := trucktel.Open()
+	mem, err := shm.Open(shm.DefaultFileName)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer func(tel trucktel.Telemetry) {
-		err := tel.Close()
+	defer func(mem shm.SharedMemory) {
+		err := mem.Close()
 		if err != nil {
 			log.Println(err)
 		}
-	}(tel)
+	}(mem)
 
-	var values trucktel.Values
-	if err = tel.Read(&values); err != nil {
+	var values shm.Values
+	if err = mem.Read(&values); err != nil {
 		log.Fatalln(err)
 	}
 

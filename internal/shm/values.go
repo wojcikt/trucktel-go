@@ -1,4 +1,4 @@
-package trucktel_go
+package shm
 
 import (
 	"encoding/binary"
@@ -10,7 +10,7 @@ const (
 	substanceSize = 25
 )
 
-func (v *Values) read(r io.Reader) error {
+func (v *Values) Read(r io.Reader) error {
 	return binary.Read(r, binary.LittleEndian, v)
 }
 

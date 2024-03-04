@@ -1,4 +1,4 @@
-package trucktel_go
+package shm
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ func TestValues_read(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	err = values.read(file)
+	err = values.Read(file)
 
 	// then
 	assert.NoError(t, err)

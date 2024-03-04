@@ -1,24 +1,23 @@
 package main
 
 import (
-	trucktel "github.com/wojcikt/trucktel-go"
-	"github.com/wojcikt/trucktel-go/internal"
+	"github.com/wojcikt/trucktel-go/internal/shm"
 	"io"
 	"log"
 	"os"
 )
 
 func main() {
-	shm, err := internal.OpenShm(trucktel.DefaultMmfName)
+	mem, err := shm.Open(shm.DefaultFileName)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	defer func(shm internal.Shm) {
-		err := shm.Close()
+	defer func(mem shm.SharedMemory) {
+		err := mem.Close()
 		if err != nil {
 			log.Println(err)
 		}
-	}(shm)
+	}(mem)
 
 	fileName := "data.bin"
 	dst, err := os.Create(fileName)
@@ -29,7 +28,7 @@ func main() {
 		_ = dest.Close()
 	}(dst)
 
-	written, err := io.Copy(dst, shm.Reader())
+	written, err := io.Copy(dst, mem.Reader())
 	if err != nil {
 		log.Fatal(err)
 	}
